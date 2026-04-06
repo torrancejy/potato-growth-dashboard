@@ -1,4 +1,86 @@
 // ============================================================
+// 关键考试节点（统一管理，Exam 和 Overview 共享）
+// ============================================================
+
+export const EXAM_NODES = [
+  {
+    num: '1',
+    name: '八下期中',
+    dateStart: '2026-04-21',
+    dateEnd: '2026-04-23',
+    action: '初步定位',
+    check1: '是否已显出向上趋势？',
+    check2: '结构是否比上次更优？',
+    phase: 'midterm2',
+  },
+  {
+    num: '2',
+    name: '八下期末',
+    dateStart: '2026-06-20',
+    dateEnd: '2026-06-30',
+    action: '决定暑假主基调',
+    check1: '暑假该不该按冲高配资源？',
+    check2: '仁泽要不要开始重点盯？',
+    phase: 'final2',
+  },
+  {
+    num: '3',
+    name: '九上期中',
+    dateStart: null,
+    dateEnd: null,
+    action: '验证八下是不是假象',
+    check1: '趋势是否延续？',
+    check2: '哪科真正突破？',
+    phase: 'midterm3',
+  },
+  {
+    num: '4',
+    name: '九上期末/零模',
+    dateStart: '2027-01-01',
+    dateEnd: '2027-01-20',
+    action: '第一次真正分流',
+    check1: '实验/仁泽/稳妥校三条线如何分配？',
+    check2: '区排多少？是否达到目标？',
+    phase: 'zero',
+  },
+]
+
+/**
+ * 根据当前时间计算节点状态
+ * 'past'       已结束（灰）
+ * 'current'    当前/即将到来（蓝）
+ * 'upcoming'   未来（浅蓝）
+ * 'unknown'    日期未定
+ */
+export function getExamNodeStatus(node) {
+  const now = Date.now()
+  if (!node.dateStart || !node.dateEnd) return 'unknown'
+  const start = new Date(node.dateStart).getTime()
+  const end = new Date(node.dateEnd).getTime() + 24 * 60 * 60 * 1000 // 包含当天
+  if (now > end) return 'past'
+  if (now >= start) return 'current'
+  // 未到，但30天内即将到来 = upcoming
+  if (start - now < 30 * 24 * 60 * 60 * 1000) return 'upcoming'
+  return 'future'
+}
+
+/**
+ * 找到当前/下一个即将到来的考试节点
+ */
+export function getCurrentExamNode(nodes = EXAM_NODES) {
+  const now = Date.now()
+  for (const node of nodes) {
+    if (!node.dateStart) continue
+    const start = new Date(node.dateStart).getTime()
+    const end = node.dateEnd
+      ? new Date(node.dateEnd).getTime() + 24 * 60 * 60 * 1000
+      : start + 3 * 24 * 60 * 60 * 1000
+    if (now <= end) return node
+  }
+  return null
+}
+
+// ============================================================
 // 初始种子数据
 // 作用：第一次加载时填充默认值，之后全部由用户录入
 // ============================================================

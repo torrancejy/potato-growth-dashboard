@@ -1,19 +1,33 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import ExamForm from '../components/ExamForm'
 import { computeTrendJudgment } from '../rules/engine'
-import { SUBJECT_KEYS, SUBJECTS_META } from '../data/initialData'
+import { SUBJECT_KEYS, SUBJECTS_META, EXAM_NODES, getExamNodeStatus } from '../data/initialData'
 
-const EXAM_NODES = [
-  {num:'1',name:'八下期中',date:'4月21-23日',action:'初步定位',check1:'是否已显出向上趋势？',check2:'结构是否比上次更优？'},
-  {num:'2',name:'八下期末',date:'6月底',action:'决定暑假主基调',check1:'暑假该不该按冲高配资源？',check2:'仁泽要不要开始重点盯？'},
-  {num:'3',name:'九上期中',date:'待定',action:'验证八下是不是假象',check1:'趋势是否延续？',check2:'哪科真正突破？'},
-  {num:'4',name:'九上期末/零模',date:'次年1月',action:'第一次真正分流',check1:'实验/仁泽/稳妥校三条线如何分配？',check2:'区排多少？是否达到目标？'},
-]
+// 节点颜色映射
+const NODE_COLORS = {
+  past:     { dot: '#BDBDBD', tag: '#F5F5F5', tagText: '#9E9E9E', text: '#9E9E9E' },
+  current:  { dot: '#1565C0', tag: '#E3F2FD', tagText: '#1565C0', text: '#1565C0' },
+  upcoming:  { dot: '#42A5F5', tag: '#E3F2FD', tagText: '#1976D2', text: '#333' },
+  future:    { dot: '#90CAF9', tag: '#F5F5F5', tagText: '#757575', text: '#555' },
+  unknown:   { dot: '#BDBDBD', tag: '#F5F5F5', tagText: '#9E9E9E', text: '#9E9E9E' },
+}
 
 export default function Exam({ exams, onAdd, onDelete }) {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [now, setNow] = useState(Date.now())
   const trend = computeTrendJudgment(exams)
+
+  // 每分钟更新一次当前时间，保持节点状态新鲜
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(t)
+  }, [])
+
+  // 实时计算每个节点状态
+  const nodeStatuses = useMemo(() => {
+    return EXAM_NODES.map(n => ({ ...n, status: getExamNodeStatus(n) }))
+  }, [now])
 
   if (showForm || editing) {
     return (
@@ -90,23 +104,35 @@ export default function Exam({ exams, onAdd, onDelete }) {
       <div style={{background:'#fff',borderRadius:'14px',padding:'16px'}}>
         <div style={{fontSize:'14px',fontWeight:'700',color:'#1565C0',marginBottom:'16px'}}>◎ 关键考试节点</div>
         <div style={{display:'flex',flexDirection:'column',gap:'0'}}>
-          {EXAM_NODES.map((node,idx)=>(
+          {nodeStatuses.map((node,idx)=>{
+            const c = NODE_COLORS[node.status] || NODE_COLORS.unknown
+            return (
             <div key={node.num} style={{display:'flex',gap:'14px'}}>
               <div style={{display:'flex',flexDirection:'column',alignItems:'center',width:'36px'}}>
-                <div style={{width:'32px',height:'32px',borderRadius:'50%',background:idx===0?'#1565C0':'#90CAF9',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',fontWeight:'700',flexShrink:0}}>{node.num}</div>
-                {idx<EXAM_NODES.length-1&&<div style={{width:'2px',flex:1,background:'#E0E0E0',minHeight:'30px',margin:'4px 0'}}/>}
+                <div style={{
+                  width:'32px',height:'32px',borderRadius:'50%',
+                  background: c.dot, color:'#fff',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:'14px',fontWeight:'700',flexShrink:0,
+                  boxShadow: node.status === 'current' ? `0 0 0 3px ${c.dot}44` : 'none',
+                }}>
+                  {node.status === 'past' ? '✓' : node.num}
+                </div>
+                {idx<nodeStatuses.length-1&&<div style={{width:'2px',flex:1,background:c.dot,mixBlendMode:'multiply',minHeight:'30px',margin:'4px 0',opacity:0.3}}/>}
               </div>
-              <div style={{paddingBottom:idx<EXAM_NODES.length-1?'16px':'0',flex:1}}>
+              <div style={{paddingBottom:idx<nodeStatuses.length-1?'16px':'0',flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                  <span style={{fontWeight:'700',fontSize:'15px'}}>{node.name}</span>
-                  <span style={{background:'#E3F2FD',color:'#1565C0',borderRadius:'20px',padding:'2px 8px',fontSize:'12px'}}>{node.date}</span>
+                  <span style={{fontWeight:'700',fontSize:'15px',color: c.text}}>{node.name}</span>
+                  <span style={{background: c.tag, color: c.tagText, borderRadius:'20px',padding:'2px 8px',fontSize:'12px'}}>
+                    {node.status === 'past' ? '已结束' : node.status === 'current' ? '🔥 进行中' : node.dateStart ? node.dateStart.replace(/-/g, '/').replace(/^2026\//,'').replace(/^2027\//,'') + (node.dateEnd && node.dateEnd !== node.dateStart ? '–' + node.dateEnd.slice(-2) : '') : '日期待定'}
+                  </span>
                   <span style={{background:'#1565C0',color:'#fff',borderRadius:'20px',padding:'2px 10px',fontSize:'12px',fontWeight:'600'}}>{node.action}</span>
                 </div>
-                <div style={{marginTop:'4px',fontSize:'12px',color:'#555'}}>→ {node.check1}</div>
-                <div style={{fontSize:'12px',color:'#555'}}>→ {node.check2}</div>
+                <div style={{marginTop:'4px',fontSize:'12px',color:c.text,opacity:0.7}}>→ {node.check1}</div>
+                <div style={{fontSize:'12px',color:c.text,opacity:0.7}}>→ {node.check2}</div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </div>
     </div>

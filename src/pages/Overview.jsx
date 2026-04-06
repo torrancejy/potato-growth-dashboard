@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { computeOverview, computeStrategy } from '../rules/engine'
-import { SUBJECTS_META, SUBJECT_KEYS } from '../data/initialData'
-
-const MIDTERM = new Date('2026-04-21T00:00:00')
+import { SUBJECTS_META, SUBJECT_KEYS, getCurrentExamNode } from '../data/initialData'
 
 function useCountdown() {
   const [now, setNow] = useState(Date.now())
@@ -10,17 +8,21 @@ function useCountdown() {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
-  const diff = MIDTERM - now
-  if (diff <= 0) return '已开始'
+  // 动态找到最近/正在进行的考试节点
+  const node = getCurrentExamNode()
+  if (!node) return { text: '等待设置', days: null, label: '' }
+  const end = new Date(node.dateEnd).getTime() + 24 * 60 * 60 * 1000 // 包含当天结束
+  const diff = end - now
   const d = Math.floor(diff/86400000)
   const h = String(Math.floor((diff%86400000)/3600000)).padStart(2,'0')
   const m = String(Math.floor((diff%3600000)/60000)).padStart(2,'0')
   const s = String(Math.floor((diff%60000)/1000)).padStart(2,'0')
-  return d > 0 ? `${d}天 ${h}:${m}:${s}` : `${h}:${m}:${s}`
+  const text = d > 0 ? `${d}天 ${h}:${m}:${s}` : `${h}:${m}:${s}`
+  return { text, days: d, label: node.name }
 }
 
 export default function Overview({ exams, targets, manual, onToggleJudgment, strategyMode, onStrategyModeChange }) {
-  const cd = useCountdown()
+  const { text: cd, days, label: cdLabel } = useCountdown()
   // 策略模式：auto=自动判断，aggressive=强制激进，conservative=强制保守
   const effectiveMode = strategyMode === 'auto'
     ? (computeStrategy(exams, manual).mode === '激进' ? 'aggressive' : 'conservative')
@@ -68,7 +70,7 @@ export default function Overview({ exams, targets, manual, onToggleJudgment, str
         </div>
         <div style={{marginTop:'14px',background:'rgba(255,255,255,0.15)',borderRadius:'12px',padding:'14px',textAlign:'center'}}>
           <div style={{fontSize:'36px',fontWeight:'800',color:'#FFD54F',lineHeight:1}}>{cd}</div>
-          <div style={{fontSize:'12px',opacity:0.85,marginTop:'4px'}}>八下期中 · 4月21-23日</div>
+          <div style={{fontSize:'12px',opacity:0.85,marginTop:'4px'}}>{cdLabel || '关键考试节点'} · {days !== null && days < 0 ? '已结束' : days === 0 ? '今日开考！' : ''}</div>
         </div>
       </div>
 
