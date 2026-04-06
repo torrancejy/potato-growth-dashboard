@@ -143,7 +143,7 @@ export default function Overview({ exams, targets, manual, onToggleJudgment, str
               background: item.satisfied ? '#4CAF50' : item.skipped ? '#FFF8E1' : 'transparent',
               display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:'1px'}}>
               {item.satisfied ? <span style={{color:'#fff',fontSize:'10px'}}>✓</span>
-              : item.skipped ? <span style={{color:'#FF9800',fontSize:'10px',fontSize:'9px'}}>?</span> : null}
+              : item.skipped ? <span style={{color:'#FF9800',fontSize:'9px'}}>?</span> : null}
             </div>
             <div style={{flex:1}}>
               <span style={{fontSize:'12px',color: item.satisfied ? '#2E7D32' : item.skipped ? '#FF9800' : '#999'}}>
