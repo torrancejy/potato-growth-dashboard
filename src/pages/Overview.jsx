@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { computeOverview, computeStrategy } from '../rules/engine'
-import { SUBJECTS_META, SUBJECT_KEYS, getCurrentExamNode } from '../data/initialData'
+import { SUBJECTS_META, SUBJECT_KEYS, getCurrentExamNode, getCountdownTarget } from '../data/initialData'
 
 function useCountdown() {
   const [now, setNow] = useState(Date.now())
@@ -11,14 +11,15 @@ function useCountdown() {
   // 动态找到最近/正在进行的考试节点
   const node = getCurrentExamNode()
   if (!node) return { text: '等待设置', days: null, label: '' }
-  // dateEnd 当天的 23:59:59 之前都算倒计时中
-  const end = new Date(node.dateEnd + 'T23:59:59').getTime()
+  // 倒计时到 dateStart（考试开始日）的 00:00
+  const target = getCountdownTarget(node)
+  const end = new Date(target).getTime() - 1 // 4月21日 00:00:00 之前
   const diff = end - now
   const d = Math.floor(diff/86400000)
   const h = String(Math.floor((diff%86400000)/3600000)).padStart(2,'0')
   const m = String(Math.floor((diff%3600000)/60000)).padStart(2,'0')
   const s = String(Math.floor((diff%60000)/1000)).padStart(2,'0')
-  const text = d > 0 ? `${d}天 ${h}:${m}:${s}` : `${h}:${m}:${s}`
+  const text = d > 0 ? `${d}天 ${h}:${m}:${s}` : d === 0 ? `🔥 ${h}:${m}:${s}` : '考试进行中'
   return { text, days: d, label: node.name }
 }
 
@@ -71,7 +72,7 @@ export default function Overview({ exams, targets, manual, onToggleJudgment, str
         </div>
         <div style={{marginTop:'14px',background:'rgba(255,255,255,0.15)',borderRadius:'12px',padding:'14px',textAlign:'center'}}>
           <div style={{fontSize:'36px',fontWeight:'800',color:'#FFD54F',lineHeight:1}}>{cd}</div>
-          <div style={{fontSize:'12px',opacity:0.85,marginTop:'4px'}}>{cdLabel || '关键考试节点'} · {days !== null && days < 0 ? '已结束' : days === 0 ? '今日开考！' : ''}</div>
+          <div style={{fontSize:'12px',opacity:0.85,marginTop:'4px'}}>{cdLabel || '关键考试节点'} · {days !== null && days < 0 ? '已结束' : days === 0 ? '今日开考！' : '开考倒计时'}</div>
         </div>
       </div>
 

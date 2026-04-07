@@ -82,6 +82,18 @@ export function getCurrentExamNode(nodes = EXAM_NODES) {
   return null
 }
 
+/**
+ * 获取倒计时目标日期（显示到考试开始那天）
+ * 返回 dateEnd 当天 23:59:59（若 dateEnd 存在）
+ * 用于总览页倒计时显示
+ */
+export function getCountdownTarget(node) {
+  if (!node) return null
+  // 优先用 dateStart（考试开始日）
+  // dateEnd 只用于判断"进行中"状态
+  return node.dateStart + 'T00:00:00'
+}
+
 // ============================================================
 // 初始种子数据
 // 作用：第一次加载时填充默认值，之后全部由用户录入
