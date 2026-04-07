@@ -11,7 +11,8 @@ function useCountdown() {
   // 动态找到最近/正在进行的考试节点
   const node = getCurrentExamNode()
   if (!node) return { text: '等待设置', days: null, label: '' }
-  const end = new Date(node.dateEnd).getTime() + 24 * 60 * 60 * 1000 // 包含当天结束
+  // dateEnd 当天的 23:59:59 之前都算倒计时中
+  const end = new Date(node.dateEnd + 'T23:59:59').getTime()
   const diff = end - now
   const d = Math.floor(diff/86400000)
   const h = String(Math.floor((diff%86400000)/3600000)).padStart(2,'0')

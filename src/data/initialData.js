@@ -50,16 +50,18 @@ export const EXAM_NODES = [
  * 'past'       已结束（灰）
  * 'current'    当前/即将到来（蓝）
  * 'upcoming'   未来（浅蓝）
+ * 'future'     更远期（淡灰蓝）
  * 'unknown'    日期未定
+ *
+ * 注意：dateEnd 当天的 23:59:59 视为"仍在进行中"
  */
 export function getExamNodeStatus(node) {
   const now = Date.now()
   if (!node.dateStart || !node.dateEnd) return 'unknown'
-  const start = new Date(node.dateStart).getTime()
-  const end = new Date(node.dateEnd).getTime() + 24 * 60 * 60 * 1000 // 包含当天
+  const start = new Date(node.dateStart + 'T00:00:00').getTime()
+  const end = new Date(node.dateEnd + 'T23:59:59').getTime()
   if (now > end) return 'past'
   if (now >= start) return 'current'
-  // 未到，但30天内即将到来 = upcoming
   if (start - now < 30 * 24 * 60 * 60 * 1000) return 'upcoming'
   return 'future'
 }
@@ -71,9 +73,9 @@ export function getCurrentExamNode(nodes = EXAM_NODES) {
   const now = Date.now()
   for (const node of nodes) {
     if (!node.dateStart) continue
-    const start = new Date(node.dateStart).getTime()
+    const start = new Date(node.dateStart + 'T00:00:00').getTime()
     const end = node.dateEnd
-      ? new Date(node.dateEnd).getTime() + 24 * 60 * 60 * 1000
+      ? new Date(node.dateEnd + 'T23:59:59').getTime()
       : start + 3 * 24 * 60 * 60 * 1000
     if (now <= end) return node
   }
