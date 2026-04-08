@@ -3,7 +3,7 @@
 // 输入：原始数据（考试记录、情报、样本、目标、手动判断）
 // 输出：派生状态（趋势、策略、学科状态、权重）
 // ============================================================
-import { ZONE_THRESHOLDS } from '../data/initialData'
+import { ZONE_THRESHOLDS, GRADE_TOTAL, CLASS_TOTAL } from '../data/initialData'
 import { SUBJECT_KEYS } from '../data/initialData'
 
 function recent(arr, n = 3) {
@@ -30,7 +30,6 @@ export function computeSubjectStatus(examRecords, subject, targets) {
   const latestExam = sorted[0]
   const latestScore = latestExam?.subjects?.[subject]?.score
   if (!latestScore) return { label: '暂无数据', color: '#9E9E9E' }
-  // 单元测只影响数学
   if (latestExam?.examType === 'unit' && subject === 'math') {
     return { label: '⚠️ 待验证', color: '#FF9800' }
   }
@@ -93,50 +92,37 @@ export function computeSubjectAction(examRecords, subject) {
 }
 
 // ---------- 5. 五科完整状态 ----------
-// ---------- 5.1 排名解析 ----------
 export function parseRank(value) {
   if (!value) return null
   const s = String(value).trim()
-  // 纯数字
   if (/^\d+$/.test(s)) return parseInt(s, 10)
-  // "约60" / "约第60名"
   const approx = s.match(/约[^\d]*(\d+)/)
   if (approx) return parseInt(approx[1], 10)
-  // "前20" / "前20名" / "20名"
   const qian = s.match(/前(\d+)/)
   if (qian) return parseInt(qian[1], 10)
-  // "20-30" 取中间
   const range = s.match(/(\d+)\s*[-–~]\s*(\d+)/)
   if (range) return Math.round((parseInt(range[1]) + parseInt(range[2])) / 2)
-  // "中等偏上" 等文字
   if (s.includes('顶尖') || s.includes('第一')) return 1
-  if (s.includes('前列') || s.includes('前十')) return Math.round(parseInt(s.match(/\d+/) || [5], 10) * 0.5)
   if (s.includes('中等偏上')) return Math.round(GRADE_TOTAL * 0.15)
   if (s.includes('中等')) return Math.round(GRADE_TOTAL * 0.30)
   if (s.includes('中等偏下')) return Math.round(GRADE_TOTAL * 0.45)
   return null
 }
 
-// ---------- 5.2 学科竞争力评估 ----------
 export function evaluateSubjectCompetitive(subject, latestExam) {
-  const score = latestExam?.subjects?.[subject]?.score ?? null
+  const score = latestExam?.subjects?.[subject]?.score
   if (!score) return null
   const gradeRank = parseRank(latestExam?.rank?.grade)
   const classRank = parseRank(latestExam?.rank?.class)
-  const trend = computeSubjectTrend([latestExam], subject)
   if (!gradeRank && !classRank) return null
-  // 有排名：综合位置评估
+  const rankType = gradeRank ? 'grade' : 'class'
   const rank = gradeRank || classRank
-  const pct = rank / GRADE_TOTAL
-  const labels = [
-    { max: 0.01, label: '🏆 年级顶尖', color: '#FFD700' },
-    { max: 0.05, label: '🌟 年级强势', color: '#4CAF50' },
-    { max: 0.20, label: '⭐ 位置突出', color: '#2196F3' },
-    { max: 1,    label: '🔎 隐性优势', color: '#9C27B0' },
-  ]
-  const level = labels.find(l => pct <= l.max) || labels[labels.length - 1]
-  const trendLabel = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '➔'
-  return { label: `${level.label} ${trendLabel}`, color: level.color, rank, pct: Math.round(pct * 100), level: level.label.split(' ')[0] }
+  const pct = gradeRank ? (gradeRank / GRADE_TOTAL) : (classRank / CLASS_TOTAL)
+  const level = pct <= 0.01 ? { label: '🏆 年级顶尖', color: '#FFD700' }
+    : pct <= 0.05 ? { label: '🌟 年级强势', color: '#4CAF50' }
+    : pct <= 0.20 ? { label: '⭐ 位置突出', color: '#2196F3' }
+    : { label: '🔎 隐性优势', color: '#9C27B0' }
+  return { label: level.label, color: level.color, rank, pct: Math.round(pct * 100), rankType }
 }
 
 export function computeAllSubjectStates(examRecords, targets) {
@@ -214,9 +200,7 @@ export function computeZone(examRecords, targets) {
 }
 
 // ---------- 11. 动态权重 ----------
-// modeOverride: 'aggressive' | 'conservative' | null（null=按数据自动判断）
 export function computeWeights(examRecords, manual, modeOverride) {
-  // 优先使用用户手动选择，否则按数据自动判断
   let mode
   if (modeOverride === 'aggressive' || modeOverride === 'conservative') {
     mode = modeOverride === 'aggressive' ? '激进' : '保守'
