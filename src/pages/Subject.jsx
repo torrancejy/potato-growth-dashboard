@@ -55,6 +55,13 @@ export default function Subject({ exams, targets }) {
             {s?.shortboard && s.shortboard !== '待分析' && (
               <div style={{marginTop:'6px',fontSize:'12px',color:'#C62828'}}>⚠️ 短板：{s.shortboard}</div>
             )}
+
+            {s?.competitive && (
+              <div style={{marginTop:'8px',padding:'6px 10px',borderRadius:'6px',background:s.competitive.color+'18',border:'1px solid '+s.competitive.color+'44',display:'flex',alignItems:'center',gap:'6px'}}>
+                <span style={{fontSize:'12px',color:s.competitive.color,fontWeight:'600'}}>{s.competitive.label}</span>
+                <span style={{fontSize:'11px',color:'#888'}}>{s.competitive.rankType === 'grade' ? '年级' : '班级'}排位约前{s.competitive.pct}%</span>
+              </div>
+            )}
           </div>
         )
       })}
